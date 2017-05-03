@@ -1,0 +1,90 @@
+        - using Iterators
+        - using AxisArrays
+        - using Images, Colors, ColorTypes, PyPlot, ImageFeatures
+        - function hist(x, y)
+        -     h = fit(Histogram, x, y)
+        -     return h.weights
+        - end
+        - function hist(x::AbstractArray, y::Range)
+ 59361398     outs = zeros(length(y))
+    65920     outs[1:end] = sum(x' .< y, 2)[:]
+        0     @. outs[2:end] = outs[2:end] - outs[1:end-1]
+        0     return outs
+        - end
+        - function collapse(houghSpace::Array{Real, 2}, accumulator::Array{Real,2})
+        -     Threads.@threads for i in 1:numThetas
+        -         houghSpace[:,i] .= hist(accumulator[:,i],rho);
+        -     end
+        -     return houghSpace
+        - end
+        - precompile(hist, (AbstractArray, Range))
+        - function hist(x, y::AbstractArray)
+        -     edges = @. (y[1:end-1]+y[2:end])/2
+        -     outs = zeros(length(y))
+        -     outs[1:end-1] = sum(x' .< edges, 2)
+ 33472453     outs[2:end] = outs[2:end] .- outs[1:end-1]
+        0     outs[end] = length(x) - sum(outs[1:end-1])
+        -     return outs
+       96 end
+        0 function hough(theImage::AbstractArray{Bool, 2}, thetaSampleFrequency)
+        0     # Define the hough space
+        -     theImage = flipdim(theImage,1);
+        0     width, height = size(theImage);
+   403792 
+        -     rhoLimit = norm([width height]);
+    58576     rho = -rhoLimit:1:rhoLimit;
+        -     theta = 0:thetaSampleFrequency:pi;
+   117184 
+   117104     numThetas = length(theta);
+        -     houghSpace = zeros(length(rho),numThetas);
+        - 
+        -     idxs = find(theImage)
+        -     #Find the "edge" pixels
+        -     xIndicies, yIndicies = ind2sub(theImage, idxs);
+        0     cartidx = size([xIndicies yIndicies])
+  3682832     #@show size(xIndicies)
+        -     #@show xIndicies[:,1]
+        -     #@show size(yIndicies)
+        - 
+        -     #Preallocate space for the accumulator array
+        -     numEdgePixels = length(xIndicies);
+        -     accumulator = zeros(numEdgePixels,numThetas);
+        - 
+        -     #Preallocate cosine and sine calculations to increase speed. In
+        -     #addition to precallculating sine and cosine we are also multiplying
+     2048     #them by the proper pixel weights such that the rows will be indexed by
+     2704     #the pixel number and the columns will be indexed by the thetas.
+        -     #Example: cosine(3,:) is 2*cosine(0 to pi)
+        0     #         cosine(:,1) is (0 to width of image)*cosine(0)
+  4559568     #cosine = @. [i for i in 0:width-1]'*cos(theta); #Matrix Outerproduct
+        -     #sine = @. [i for i in 0:height-1]'*sin(theta); #Matrix Outerproduct
+        -     cosine = @. [i for i in 0:width-1]*cos(theta)'; #Matrix Outerproduct
+        -     sine = @. [i for i in 0:height-1]*sin(theta)'; #Matrix Outerproduct
+        - 
+        -     for i in 1:numEdgePixels
+  4553150         accumulator[i,:] = cosine[xIndicies[i],:] + sine[yIndicies[i],:];
+        -     end
+        -     # accumulator[1:numEdgePixels,:] = @. (xIndicies - 1)*cos(theta)' + (yIndicies - 1)*sin(theta)';
+        -     #Scan over the thetas and bin the rhos
+        - 
+        0     houghSpace = collapse(houghSpace, accumulator)
+        - 
+        -     #houghSpace = accumulator =#
+        - 
+        0     return (theta, rho , houghSpace)
+       16 end
+        0 
+        0 function test()
+        0     image = load("Pentagon.png")
+        0     bwImg = convert.(Gray,image)
+        0     edges = canny(bwImg)
+        0     theta, rho, houghSpace, = hough(edges,0.05)
+        0     pcolormesh(Array(theta),Array(rho),Array(houghSpace));
+        -     title("Hough Transform");
+        -     xlabel("Theta (radians)");
+        -     ylabel("Rho (pixels)");
+        -     show()
+        - end
+        - # test()
+        - # y = (p/sin(theta)-x*cot(theta))
+        - 
