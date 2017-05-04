@@ -1,4 +1,4 @@
-using PyPlot, ExcelReaders
+using ExcelReaders
 include("./linearity.jl")
 function readData(run::String)
   f = openxl("20161121 Group 7 TensileTestProgram_1.xls")
@@ -28,6 +28,7 @@ function extractYoungs(run::String)
   "C" => 250:1070,
   "D" => 600:2500,
   )
+  using PyPlot
   rawdata = readData(run)
   data = transpose(cat(2, rawdata[1,:]/178, rawdata[2,:]/areas[run]))
   @show size(data)
