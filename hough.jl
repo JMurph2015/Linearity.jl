@@ -36,7 +36,7 @@ function hough(theImage::AbstractArray{Bool, 2}, thetaSampleFrequency)
     for i in 1:numThetas
         houghSpace[:,i] .= fit(Histogram, accumulator[:,i], rho, closed=:left).weights
     end
-    return (theta, rho , houghSpace)
+    return (theta, rho, houghSpace)
 end
 
 function weightedHough(data::AbstractArray, numTheta, numRho, thetaLimits=[0, pi])
